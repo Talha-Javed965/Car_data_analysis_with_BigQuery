@@ -1,0 +1,93 @@
+          Data Preparation and Feature Engineering
+
+CREATE OR REPLACE TABLE `car-price-analysis-450604.Car_Price_dataset.car_prices` AS
+SELECT
+  CAST(mileage AS FLOAT64) AS mileage,
+  CAST(engine_size AS FLOAT64) AS engine_size,
+  CAST(Owner_count AS FLOAT64) AS Owner_count,
+  CAST(price AS FLOAT64) AS price,
+  -- Convert categorical data to numerical. For example, assume 'automatic' is 1 and others are 0.
+  IF(transmission = 'automatic', 1, 0) AS transmission_automatic,
+  IF(transmission = 'semi-automatic', 1, 0) AS transmission_semi_automatic,
+  IF(transmission = 'manual', 1, 0) AS transmission_manual,
+  -- Similarly, handle fuel type if needed. This is a simple binary example.
+  IF(fuel_type = 'diesel', 1, 0) AS fuel_diesel,
+  IF(fuel_type = 'petrol', 1, 0) AS fuel_petrol,
+  IF(fuel_type = 'electric', 1, 0) AS fuel_electric,
+  IF(fuel_type = 'hybrid', 1, 0) AS fuel_hybrid,
+
+  IF (Brand = 'BMW', 1, 0) AS Brand_BMW,
+  IF (Brand = 'Audi', 1, 0) AS Brand_Audi,
+  IF (Brand = 'Honda', 1, 0) AS Brand_Honda,
+  IF (Brand = 'mercedes', 1, 0) AS Brand_Mercedes,
+  IF (Brand = 'toyota', 1, 0) AS Brand_Toyota,
+  IF (Brand = 'hyundai', 1, 0) AS Brand_Hyundai,
+  IF (Brand = 'chevorlet', 1, 0) AS Brand_Chevorlet,
+  IF (Brand = 'ford', 1, 0) AS Brand_Ford,
+  IF (Brand = 'volkswagen', 1, 0) AS Brand_Volkswagen,
+  IF (Brand = 'kia', 1, 0) AS Brand_Kia,
+  
+
+
+FROM `car-price-analysis-450604.Car_Price_dataset.car_prices`
+WHERE price IS NOT NULL;
+
+
+          Build a Predictive Model
+
+CREATE OR REPLACE MODEL `car-price-analysis-450604.Car_Price_dataset.car_prices_model`
+OPTIONS (
+  model_type = 'linear_reg',
+  input_label_cols = ['price'],
+  auto_class_weights = TRUE,         -- Helps with categorical data
+  data_split_method = 'NO_SPLIT'     -- Use all data for training
+) AS
+SELECT
+  mileage,
+  engine_size,
+  Owner_count,
+  transmission,    -- Use raw categorical data
+  brand,           -- Use raw brand names
+  fuel_type,       -- Use raw fuel types
+  price
+FROM
+  `car-price-analysis-450604.Car_Price_dataset.car_prices`;
+
+
+          Evaluate the Model and Extract Feature Weights
+
+SELECT *
+FROM ML.WEIGHTS(MODEL `car-price-analysis-450604.Car_Price_dataset.car_prices_model`)
+ORDER BY ABS(weight) DESC;
+
+
+SELECT
+  *
+FROM ML.EVALUATE(MODEL `car-price-analysis-450604.Car_Price_dataset.car_prices_model`,
+                 (
+                   SELECT
+                        mileage,
+  engine_size,
+  Owner_count,
+  transmission_automatic,
+  transmission_semi_automatic,
+  transmission_manual,
+  Brand_BMW,
+  Brand_Audi,
+  Brand_Honda,
+  Brand_Mercedes,
+  Brand_Toyota,
+  Brand_Hyundai,
+  Brand_Chevorlet,
+  Brand_Ford,
+  Brand_Volkswagen,
+  Brand_Kia,
+  fuel_diesel,
+  fuel_petrol,
+  fuel_electric,
+  fuel_hybrid,
+  price
+                   FROM `car-price-analysis-450604.Car_Price_dataset.car_prices`
+                 ));
+
+
